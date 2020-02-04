@@ -1,0 +1,467 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Large array study"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Use a study comparing FLORIS to a large sowfa array to make some points"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "import floris.tools as wfct\n",
+    "import pandas as pd\n",
+    "import numpy as np"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "minSpeed = 4.0\n",
+    "maxSpeed = 8.0"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Import SOWFA case and visualize"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Import SOWFA\n",
+    "case_folder = '/Users/pfleming/Box Sync/sowfa_library/full_runs/gch_runs/eagle_5x5/case4_c1_baseline'\n",
+    "\n",
+    "# Load the SOWFA case in\n",
+    "si = wfct.sowfa_utilities.SowfaInterface(case_folder)\n",
+    "sowfa_flow_data = si.flow_data\n",
+    "\n",
+    "hor_plane = si.get_hor_plane(90.)\n",
+    "\n",
+    "# Plot and show\n",
+    "fig, ax = plt.subplots()\n",
+    "wfct.visualization.visualize_cut_plane(hor_plane, ax=ax,minSpeed=minSpeed,maxSpeed=maxSpeed)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Make a FLORIS case to match"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fi = wfct.floris_interface.FlorisInterface(\"example_input.json\")\n",
+    "fi.reinitialize_flow_field(layout_array=(si.layout_x, si.layout_y))\n",
+    "fi.calculate_wake()\n",
+    "fig, ax = plt.subplots()\n",
+    "hor_plane = fi.get_hor_plane()\n",
+    "wfct.visualization.visualize_cut_plane(hor_plane, ax=ax,minSpeed=minSpeed,maxSpeed=maxSpeed)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "## Collect results into a dataframe\n",
+    "df = pd.DataFrame()\n",
+    "df['sowfa'] = si.get_average_powers()\n",
+    "df['floris'] = fi.get_turbine_power()\n",
+    "df['turb_id'] = np.arange(df.shape[0])\n",
+    "df.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Identify free stream turbines from FLORIS outputs"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Define front row as turbines with maximum power"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "front_row = df[df.floris > (df.floris.max() * .998)].turb_id.values\n",
+    "print(front_row)\n",
+    "si.layout_x[front_row]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fig, ax = plt.subplots()\n",
+    "hor_plane = fi.get_hor_plane()\n",
+    "wfct.visualization.visualize_cut_plane(hor_plane, ax=ax,minSpeed=minSpeed,maxSpeed=maxSpeed)\n",
+    "ax.scatter(si.layout_x[front_row], si.layout_y[front_row],marker='o',color='k',s=50)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Identify single wake turbines"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Single wake turbines are free stream when we remove the front row"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "not_front_row = [r for r in df.turb_id.unique() if r not in front_row]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fi_sw = wfct.floris_interface.FlorisInterface(\"example_input.json\")\n",
+    "fi_sw.reinitialize_flow_field(layout_array=(si.layout_x[not_front_row], si.layout_y[not_front_row]))\n",
+    "fi_sw.calculate_wake()\n",
+    "fig, ax = plt.subplots()\n",
+    "hor_plane = fi_sw.get_hor_plane()\n",
+    "wfct.visualization.visualize_cut_plane(hor_plane, ax=ax,minSpeed=minSpeed,maxSpeed=maxSpeed)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df_sw = pd.DataFrame()\n",
+    "df_sw['floris'] = fi_sw.get_turbine_power()\n",
+    "df_sw['turb_id'] = not_front_row\n",
+    "single_wake_row = df_sw[df_sw.floris > (df_sw.floris.max() * .998)].turb_id.values"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Label the remaining deep wake"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "deep_wake_row = [r for r in df.turb_id.unique() if (r not in front_row) and (r not in single_wake_row)]\n",
+    "fig, ax = plt.subplots()\n",
+    "hor_plane = fi.get_hor_plane()\n",
+    "wfct.visualization.visualize_cut_plane(hor_plane, ax=ax,minSpeed=minSpeed,maxSpeed=maxSpeed)\n",
+    "ax.scatter(si.layout_x[front_row], si.layout_y[front_row],marker='o',color='k',s=50,label='Front')\n",
+    "ax.scatter(si.layout_x[single_wake_row], si.layout_y[single_wake_row],marker='s',color='g',s=60,label='Single')\n",
+    "ax.scatter(si.layout_x[deep_wake_row], si.layout_y[deep_wake_row],marker='^',color='m',s=60,label='Deep')\n",
+    "ax.legend()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Add these labels to dataframe"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df['row'] = 'front'\n",
+    "df.loc[df.turb_id.isin(single_wake_row),'row'] = 'single'\n",
+    "df.loc[df.turb_id.isin(deep_wake_row),'row'] = 'deep'\n",
+    "df.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Quick look at average error in zones"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df['error'] = np.abs(df.sowfa - df.floris)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Show average error in KW\n",
+    "df[['row','error']].groupby('row').mean()/1E3"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## How does errors evolve over a range of windspeeds?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "windspeeds = np.arange(8,8.5,0.01)\n",
+    "front_res = []\n",
+    "single_res = []\n",
+    "deep_res = []\n",
+    "total_error = []\n",
+    "for ws in windspeeds:\n",
+    "    fi.reinitialize_flow_field(wind_speed=[ws])\n",
+    "    fi.calculate_wake()\n",
+    "    df['floris'] = fi.get_turbine_power()\n",
+    "    df['error'] = np.abs(df.sowfa - df.floris)\n",
+    "    df_res = df[['row','error']].groupby('row').mean()/1E3\n",
+    "    front_res.append(df_res.loc['front'].values[0])\n",
+    "    single_res.append(df_res.loc['single'].values[0])\n",
+    "    deep_res.append(df_res.loc['deep'].values[0])\n",
+    "    total_error.append(np.abs(df.sowfa.sum() - df.floris.sum()))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# mark the best fit 8.33 m/s\n",
+    "\n",
+    "fig,axarr = plt.subplots(2,1,sharex=True,figsize=(5,7))\n",
+    "ax = axarr[0]\n",
+    "ax.plot(windspeeds,front_res,label='Front')\n",
+    "ax.plot(windspeeds,single_res,label='Single')\n",
+    "ax.plot(windspeeds,deep_res,label='Deep')\n",
+    "ax.legend()\n",
+    "ax.grid()\n",
+    "ax.axvline(8.33,color='r')\n",
+    "ax.set_ylabel('Mean Absolute Error (kW)')\n",
+    "\n",
+    "ax = axarr[1]\n",
+    "ax.semilogy(windspeeds,total_error,label='Total')\n",
+    "ax.set_xlabel('Wind Speed m/s')\n",
+    "ax.grid()\n",
+    "ax.axvline(8.33,color='r')\n",
+    "ax.legend()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Use the front row to go heterogenous"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# First, use one of the front row turbines to make a quick wind speed power LUT\n",
+    "windspeeds = np.arange(7,9,0.1)\n",
+    "power_array = np.zeros_like(windspeeds)\n",
+    "for w_idx, ws in enumerate(windspeeds):\n",
+    "    fi.reinitialize_flow_field(wind_speed=[ws])\n",
+    "    fi.calculate_wake()\n",
+    "    power_array[w_idx] = fi.get_turbine_power()[front_row[0]]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plt.plot(windspeeds,power_array)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Now work out the apparant front row wind speeds\n",
+    "front_wind = []\n",
+    "front_x = []\n",
+    "front_y = []\n",
+    "for turb_id in front_row:\n",
+    "    power_value = df.loc[df.turb_id==turb_id,'sowfa'].values[0]\n",
+    "    front_wind.append(np.interp(power_value,power_array,windspeeds))\n",
+    "    front_x.append(si.layout_x[turb_id])\n",
+    "    front_y.append(si.layout_y[turb_id])\n",
+    "print(front_wind)\n",
+    "print(front_x)\n",
+    "print(front_y)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Grid a little bit\n",
+    "front_wind = front_wind + front_wind + front_wind\n",
+    "front_y = front_y + front_y + front_y\n",
+    "front_x = [400 for x in front_x] + [3000 for x in front_x] + [5000 for x in front_x] "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Heterogenous FLORIS model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "## Use the values in a new het field\n",
+    "fi_het = wfct.floris_interface.FlorisInterface(\"example_input.json\")\n",
+    "fi_het.reinitialize_flow_field(layout_array=(si.layout_x, si.layout_y))\n",
+    "fi_het.reinitialize_flow_field(wind_speed=front_wind,wind_layout=(front_x,front_y))\n",
+    "fi_het.calculate_wake()\n",
+    "fig, ax = plt.subplots()\n",
+    "hor_plane = fi_het.get_hor_plane()\n",
+    "wfct.visualization.visualize_cut_plane(hor_plane, ax=ax,minSpeed=8.0,maxSpeed=8.5)\n",
+    "\n",
+    "# (COLORS EXAGGERATED)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# How does this compare with the best case homogenous flow?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fi.reinitialize_flow_field(wind_speed=[8.33])\n",
+    "fi.calculate_wake()\n",
+    "df['floris'] = fi.get_turbine_power()\n",
+    "df['error'] = np.abs(df.sowfa - df.floris)\n",
+    "df_res = df[['row','error']].groupby('row').mean()/1E3\n",
+    "print('Total',np.abs(df.sowfa.sum() - df.floris.sum())/1E3)\n",
+    "df_res\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "fi_het.calculate_wake()\n",
+    "df['floris'] = fi_het.get_turbine_power()\n",
+    "df['error'] = np.abs(df.sowfa - df.floris)\n",
+    "df_res = df[['row','error']].groupby('row').mean()/1E3\n",
+    "print('Total',np.abs(df.sowfa.sum() - df.floris.sum())/1E3)\n",
+    "df_res"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
