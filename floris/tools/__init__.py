@@ -51,4 +51,5 @@ from . import (
     layout_functions,
     energy_ratio_single,
     interface_utilities,
+    energy_wake_loss
 )
