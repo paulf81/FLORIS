@@ -64,6 +64,7 @@ def calculate_balanced_wake_loss(
     test_power_controlled,
     wind_speed_array_controlled,
     wind_direction_array_controlled,
+    wd_bin_size = 2.0,
 ):
     """
     Calculate balanced wake loss. See :cite:`erl-fleming2019continued` for more
@@ -92,6 +93,7 @@ def calculate_balanced_wake_loss(
             conditions.
         wind_direction_array_controlled (np.array): Wind directions in
             controlled case.
+        wd_bin_size (float): Size of wind direction bin
 
     Returns:
         dataframe: Balanced wake loss result.
@@ -132,6 +134,9 @@ def calculate_balanced_wake_loss(
     )
     df_con["con"] = "con"
     df = df_base.append(df_con)
+
+    # Round wind direction according to bin size
+    df['wd'] = np.round(df.wd / wd_bin_size) * wd_bin_size
 
     # Quantize wind speed and wind direction
     df["ws"] = df.ws.round().astype(int)
@@ -180,6 +185,7 @@ def plot_balanced_wake_loss(
     wind_speed_array_controlled,
     wind_direction_array_controlled,
     axarr,
+    wd_bin_size = 2.0,
 ):
     """
     Plot balanced wake loss.
@@ -202,6 +208,7 @@ def plot_balanced_wake_loss(
         wind_direction_array_controlled (np.array): Array of wind
             directions in controlled case.
         axarr (list of plt.ax): A list of axes to plot onto
+        wd_bin_size (float): Size of wind direction bin
 
 
     Returns:
@@ -219,6 +226,7 @@ def plot_balanced_wake_loss(
         test_power_controlled,
         wind_speed_array_controlled,
         wind_direction_array_controlled,
+        wd_bin_size
     )
 
     # Plot the energy wake loss
@@ -226,6 +234,11 @@ def plot_balanced_wake_loss(
 
     ax.plot(df_sum.wd, df_sum.wt_loss_base / df_sum.ref_en, "b", label="Baseline")
     ax.plot(df_sum.wd, df_sum.wt_loss_con / df_sum.ref_en, "g", label="Controlled")
+
+    # Show the number of points
+    ax.scatter(df_sum.wd, df_sum.wt_loss_base / df_sum.ref_en,s=df_sum.count_val_sum_base, color="b", label="_nolegend_")
+    ax.scatter(df_sum.wd, df_sum.wt_loss_con / df_sum.ref_en,s=df_sum.count_val_sum_con, color= "g", label="_nolegend_")
+
 
     # to percent
     vals = ax.get_yticks()
@@ -244,6 +257,7 @@ def plot_balanced_wake_loss(
         "g",
         label="Percent Reduction",
     )
+    ax.scatter(df_sum.wd, (df_sum.wt_loss_base - df_sum.wt_loss_con) / df_sum.ref_en,s=df_sum.points_per_bin, color= "g", label="_nolegend_")
 
     # to percent
     vals = ax.get_yticks()
