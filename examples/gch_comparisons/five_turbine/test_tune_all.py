@@ -22,17 +22,32 @@ print('Running FLORIS with no yaw...')
 # Instantiate the FLORIS object
 
 N = 10
-ti_initial = np.linspace(0.1, 0.9, N)
+# ti_initial = np.linspace(0.01, 0.3, N)
 ti_constant = np.linspace(0.1, 0.9, N)
 ti_ai = np.linspace(0.1, 0.9, N)
 ti_downstream = np.linspace(-0.9, -0.1, N)
+# ti_constant = [0.4]
+ti_downstream = [-0.325]
+ti_initial = [0.0325]
+ti_ai = [0.8]
+
+# ti_initial = [0.1]
+# ti_constant = np.linspace(0.1, 0.9, 4)
+# ti_ai = np.linspace(0.1, 0.9, 4)
+# ti_downstream = np.linspace(-0.9, -0.1, 4)
+
+# ti_initial = [0.1]
+# ti_constant = [0.5]
+# ti_ai = [0.1]
+# ti_downstream = [-0.9]
+
 
 minErr = 1000000000
 opt_params = np.zeros(4)
 
 fi = wfct.floris_interface.FlorisInterface("../../example_input.json")
 
-fi.floris.farm.wake._velocity_model.use_yaw_rec = True
+fi.floris.farm.wake._velocity_model.use_yaw_rec = False
 fi.floris.farm.wake._deflection_model.use_yaw_eff = True
 
 # Set turbine locations to 3 turbines in a row
@@ -43,16 +58,20 @@ l_x = [0, 6 * D, 12 * D, 18 * D, 24 * D]
 l_y = [0, 0, 0, 0, 0]
 count = 0
 fi.reinitialize_flow_field(layout_array=(l_x, l_y), wind_direction=270)
-for i in range(N):
-    for j in range(N):
-        for k in range(N):
-            for l in range(N):
-                print(count, 'out of ', N ** 4)
+for i in range(len(ti_initial)):
+    for j in range(len(ti_constant)):
+        for k in range(len(ti_ai)):
+            for l in range(len(ti_downstream)):
+                # print(count, 'out of ', N ** 4)
                 count = count + 1
-                fi.floris.farm.flow_field.wake.velocity_model.ti_initial = ti_initial[i]
-                fi.floris.farm.flow_field.wake.velocity_model.ti_constant = ti_constant[j]
-                fi.floris.farm.flow_field.wake.velocity_model.ti_ai = ti_ai[k]
-                fi.floris.farm.flow_field.wake.velocity_model.ti_downstream = ti_downstream[l]
+                # fi.floris.farm.flow_field.wake.velocity_model.ti_initial = ti_initial[i]
+                # fi.floris.farm.flow_field.wake.velocity_model.ti_constant = ti_constant[j]
+                # fi.floris.farm.flow_field.wake.velocity_model.ti_ai = ti_ai[k]
+                # fi.floris.farm.flow_field.wake.velocity_model.ti_downstream = ti_downstream[l]
+                fi.floris.farm.flow_field.wake.turbulence_model.ti_initial = float(ti_initial[i])
+                fi.floris.farm.flow_field.wake.turbulence_model.ti_constant = float(ti_constant[j])
+                fi.floris.farm.flow_field.wake.turbulence_model.ti_ai = float(ti_ai[k])
+                fi.floris.farm.flow_field.wake.turbulence_model.ti_downstream = float(ti_downstream[l])
 
                 # fi.reinitialize_flow_field(layout_array=(layout_x, layout_y),wind_direction=wind_direction)
                 fi.reinitialize_flow_field(turbulence_intensity=0.09)
@@ -80,10 +99,10 @@ for i in range(N):
                 SOWFA_opt_hi = 1000 * np.array([988.4, 1030.0, 1443.8, 1141.8])
                 GCH_opt_hi = fi.get_turbine_power()[1:]
                 gain_hi = 100. * (power_opt - power_initial) / power_initial
-                print('==========================================')
+                # print('==========================================')
                 print(ti_initial[i], ti_constant[j], ti_ai[k], ti_downstream[l])
-                print('Total Power Gain HI TI = %.1f%%' %
-                      (100. * (power_opt - power_initial) / power_initial))
+                # print('Total Power Gain HI TI = %.1f%%' %
+                #       (100. * (power_opt - power_initial) / power_initial))
                 # print('==========================================')
 
                 # # =============================================================================
@@ -113,21 +132,30 @@ for i in range(N):
                 GCH_opt = fi.get_turbine_power()[1:]
                 # print('==========================================')
                 gain_low = 100. * (power_opt - power_initial) / power_initial
-                print('Total Power Gain Low TI = %.1f%%' %
-                      (100. * (power_opt - power_initial) / power_initial))
+                # print('Total Power Gain Low TI = %.1f%%' %
+                #       (100. * (power_opt - power_initial) / power_initial))
                 # print('==========================================')
-                err = np.sum(
-                    (SOWFA_base - GCH_base) ** 2 + (SOWFA_opt - GCH_opt) ** 2 + (SOWFA_base_hi - GCH_base_hi) ** 2 + (
-                                SOWFA_opt_hi - GCH_opt_hi) ** 2) / (10 ** 3)
-                print('err = ', err, minErr)
-                if err < minErr:
+                # err = np.sum(
+                #     (SOWFA_base - GCH_base) ** 2 + (SOWFA_opt - GCH_opt) ** 2 + (SOWFA_base_hi - GCH_base_hi) ** 2 + (
+                #                 SOWFA_opt_hi - GCH_opt_hi) ** 2) / (10 ** 3)
+                err =   np.linalg.norm(SOWFA_base - GCH_base) + np.linalg.norm(SOWFA_opt - GCH_opt)  \
+                      + np.linalg.norm(SOWFA_base_hi - GCH_base_hi) + 1000000*(gain_low - 24)**2 + 100000000*(gain_hi -  14)**2
+
+                # if (gain_hi > 12) and (gain_low < 26):
+                print(err,minErr, gain_hi, gain_low)
+                if (err < minErr)  and (gain_hi > 10) and (gain_low < 30):
+
+                    print('err = ', err, minErr)
+                    print('Gain low = ', gain_low)
+                    print('Gain high = ', gain_hi)
+
                     minErr = err
-                    print('found min error: ', i, j, k, l)
+                    # print('found min error: ', i, j, k, l)
                     opt_params[0] = i
                     opt_params[1] = j
                     opt_params[2] = k
                     opt_params[3] = l
-
+print('==========================================')
 print('Optimal parameters:')
 print(opt_params)
 print('ti_initial = ', ti_initial[int(opt_params[0])])
@@ -135,10 +163,10 @@ print('ti_constant = ', ti_constant[int(opt_params[1])])
 print('ti_ai = ', ti_ai[int(opt_params[2])])
 print('ti_downstream = ', ti_downstream[int(opt_params[3])])
 
-fi.floris.farm.flow_field.wake.velocity_model.ti_initial = ti_initial[int(opt_params[0])]
-fi.floris.farm.flow_field.wake.velocity_model.ti_constant = ti_constant[int(opt_params[1])]
-fi.floris.farm.flow_field.wake.velocity_model.ti_ai = ti_ai[int(opt_params[2])]
-fi.floris.farm.flow_field.wake.velocity_model.ti_downstream = ti_downstream[int(opt_params[3])]
+fi.floris.farm.flow_field.wake.turbulence_model.ti_initial = float(ti_initial[int(opt_params[0])])
+fi.floris.farm.flow_field.wake.turbulence_model.ti_constant = float(ti_constant[int(opt_params[1])])
+fi.floris.farm.flow_field.wake.turbulence_model.ti_ai = float(ti_ai[int(opt_params[2])])
+fi.floris.farm.flow_field.wake.turbulence_model.ti_downstream = float(ti_downstream[int(opt_params[3])])
 
 # HI TI
 fi.reinitialize_flow_field(turbulence_intensity=0.09)
@@ -151,8 +179,8 @@ fi.reinitialize_flow_field()
 fi.calculate_wake(yaw_angles=yaw_angles)
 power_opt = fi.get_farm_power()
 gain_hi = 100. * (power_opt - power_initial) / power_initial
-print('==========================================')
-print(ti_initial[i], ti_constant[j], ti_ai[k], ti_downstream[l])
+
+# print(ti_initial[i], ti_constant[j], ti_ai[k], ti_downstream[l])
 print('Total Power Gain HI TI = %.1f%%' %
       (100. * (power_opt - power_initial) / power_initial))
 # print('==========================================')
@@ -172,6 +200,8 @@ power_opt = fi.get_farm_power()
 gain_low = 100. * (power_opt - power_initial) / power_initial
 print('Total Power Gain Low TI = %.1f%%' %
       (100. * (power_opt - power_initial) / power_initial))
+
+
 
 
 

@@ -215,11 +215,19 @@ class LegacyGauss(GaussianModel):
                 and z directions, respectively. The three arrays contain the
                 velocity deficits at each grid point in the flow field.
         """
+        import copy
+
         # veer (degrees)
         veer = flow_field.wind_veer
 
+        # # added turbulence model
+        # TI = turbine.current_turbulence_intensity
+
         # added turbulence model
-        TI = turbine.current_turbulence_intensity
+        TI_mixing = self.yaw_added_turbulence_mixing(turbine_coord, turbine, flow_field, x_locations, y_locations,
+                                                     z_locations)
+        turbine._turbulence_intensity = turbine.current_turbulence_intensity + 2*TI_mixing
+        TI = copy.deepcopy(turbine.current_turbulence_intensity) #+ TI_mixing
 
         # turbine parameters
         D = turbine.rotor_diameter

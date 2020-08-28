@@ -67,6 +67,8 @@ def initial_wake_expansion(yaw_angle, rotor_diameter, U_local, veer, uR, u0):
     return sigma_y0, sigma_z0
 
 
+
+
 @njit
 def calc_VW(
     eps,
@@ -266,31 +268,6 @@ def calc_VW(
     return V, W
 
 
-@njit
-def calculate_U2(
-    rotor_diameter, x_locations, x1, ka, current_turbulence_intensity, kb, W
-):
-    """Calculates U2 direction of U.
-
-    Args:
-        rotor_diameter (float): `turbine.rotor_diameter`.
-        x_locations (np.ndarray): X locations of the turbines.
-        x1 (float): `turbine_coord.x1`
-        ka ([type]): `GaussianModel.ka`
-        current_turbulence_intensity ([type]): `turbine.current_turbulence_intensity`
-        kb ([type]): `GaussianModel.kb`
-        W (np.ndarray): W-component velocity deficits across the flow field.
-
-    Returns:
-        [type]: [description]
-    """
-    xLocs = x_locations - x1
-    ky = ka * current_turbulence_intensity + kb
-    U2 = np.mean(W) * xLocs
-    U2 /= ky * xLocs + rotor_diameter / 2
-    return U2
-
-
 class GaussianModel(VelocityDeficit):
     """
     This is the super-class for all Gaussian-type wake models. It includes
@@ -341,6 +318,80 @@ class GaussianModel(VelocityDeficit):
                 U_local, U, W, x_locations, y_locations, turbine, turbine_coord
             )
         return U
+
+    def yaw_added_turbulence_mixing(self, coord, turbine, flow_field, x_locations, y_locations, z_locations):
+        """
+        This method computes the added turbulence due to yaw misalignment.  Yaw misalignment induces additional
+        mixing in the flow and causes the wakes to recover faster.
+
+        Args:
+            coord (:py:obj:`floris.simulation.turbine_map.TurbineMap.coords`):
+                Spatial coordinates of wind turbine.
+            turbine (:py:class:`floris.simulation.turbine.Turbine`):
+                Turbine object.
+            flow_field ([type]): [description]
+            x_locations (np.array): Streamwise locations in wake.
+            y_locations (np.array): Spanwise locations in wake.
+            z_locations (np.array): Vertical locations in wake.
+
+        Returns:
+            np.array: turbulence mixing adjustment.
+        """
+
+        import copy
+
+        if self.use_yaw_added_recovery and turbine.yaw_angle > 0.0:
+            # print('Adding TI mixing...')
+            # compute turbulence modification
+            dudz_initial = np.gradient(
+                flow_field.u_initial,
+                np.linspace(
+                    z_locations.min(), z_locations.max(), flow_field.u_initial.shape[2]
+                ),
+                axis=2,
+            )
+            V, W = calc_VW(
+                self.eps_gain,
+                coord.x1,
+                coord.x2,
+                turbine.rotor_diameter,
+                turbine.hub_height,
+                turbine.yaw_angle,
+                turbine.Ct,
+                turbine.tsr,
+                turbine.aI,
+                turbine.average_velocity,
+                flow_field.wind_map.grid_wind_speed,
+                flow_field.specified_wind_height,
+                flow_field.wind_shear,
+                flow_field.u_initial,
+                dudz_initial,
+                x_locations,
+                y_locations,
+                z_locations,
+            )
+
+            # calculate fluctuations
+            v_prime = copy.deepcopy(flow_field.v) + V
+            w_prime = copy.deepcopy(flow_field.w) + W
+
+            # get u_prime from current turbulence intensity
+            u_prime = turbine.u_prime(flow_field.u_initial)
+
+            # compute the new TKE
+            TKE = (1 / 2) * (u_prime ** 2 + v_prime ** 2 + w_prime ** 2)
+
+            # convert TKE back to TI
+            TI_total = turbine.TKE_to_TI(TKE, flow_field.u_initial)
+
+            # convert to turbulence due to mixing
+            TI_mixing = np.array(TI_total) - turbine.current_turbulence_intensity
+            idx = np.where((np.abs(x_locations - coord.x1) < turbine.rotor_diameter / 4))
+            TI_mixing = np.mean(TI_mixing[idx])
+        else:
+            TI_mixing = 0.0
+
+        return TI_mixing
 
     def calculate_VW(
         self, V, W, coord, turbine, flow_field, x_locations, y_locations, z_locations
@@ -448,18 +499,9 @@ class GaussianModel(VelocityDeficit):
 
         # set dimensions
         D = turbine.rotor_diameter
-        # xLocs = x_locations - turbine_coord.x1
-        # ky = self.ka * turbine.current_turbulence_intensity + self.kb
-        # U2 = (np.mean(W) * xLocs) / ((ky * xLocs + D / 2))
-        U2 = calculate_U2(
-            D,
-            x_locations,
-            turbine_coord.x1,
-            self.ka,
-            turbine.current_turbulence_intensity,
-            self.kb,
-            W,
-        )
+        xLocs = x_locations - turbine_coord.x1
+        ky = self.ka * turbine.current_turbulence_intensity + self.kb
+        U2 = (np.mean(W) * xLocs) / ((ky * xLocs + D / 2))
         U_total = U1 + np.nan_to_num(U2)
 
         # turn it back into a deficit

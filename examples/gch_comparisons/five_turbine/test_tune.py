@@ -63,6 +63,7 @@ max_yaw = 25.0
 # yaw_angles = yaw_opt.optimize()
 # yaw_angles = [24,24,22,16,0]
 yaw_angles = [25,25,25,0,0]
+# yaw_angles = [23.6, 23.2, 21.,  18.1, 13.9,  0. ]
 # yaw_angles = [20,20,0]
 
 fi.reinitialize_flow_field()
@@ -99,8 +100,8 @@ power_initial = fi.get_farm_power()
 
 # Perform optimization
 # yaw_angles = yaw_opt.optimize()
-yaw_angles = [25,25,22,18,0]
-# yaw_angles = [25,25,25,0,0]
+# yaw_angles = [25,25,22,18,0]
+yaw_angles = [25,25,25,0,0]
 # yaw_angles = [20,20,0]
 print('==========================================')
 fi.reinitialize_flow_field()

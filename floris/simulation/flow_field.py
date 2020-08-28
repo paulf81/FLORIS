@@ -365,17 +365,17 @@ class FlowField:
             )
 
         # correction step
-        if hasattr(self.wake.velocity_model, "correction_steps"):
-            u_deficit = self.wake.velocity_model.correction_steps(
-                flow_field.u_initial,
-                u_deficit,
-                v_deficit,
-                w_deficit,
-                x,
-                y,
-                turbine,
-                coord,
-            )
+        # if hasattr(self.wake.velocity_model, "correction_steps"):
+        #     u_deficit = self.wake.velocity_model.correction_steps(
+        #         flow_field.u_initial,
+        #         u_deficit,
+        #         v_deficit,
+        #         w_deficit,
+        #         x,
+        #         y,
+        #         turbine,
+        #         coord,
+        #     )
         return u_deficit, v_deficit, w_deficit
 
     def _compute_turbine_wake_turbulence(
