@@ -171,6 +171,8 @@ class LegacyGauss(GaussianModel):
         self.use_yaw_added_recovery = model_dictionary["use_yaw_added_recovery"]
         self.eps_gain = model_dictionary["eps_gain"]
 
+        self.gch_gain = 2.0
+
     def function(
         self,
         x_locations,
@@ -226,7 +228,7 @@ class LegacyGauss(GaussianModel):
         # added turbulence model
         TI_mixing = self.yaw_added_turbulence_mixing(turbine_coord, turbine, flow_field, x_locations, y_locations,
                                                      z_locations)
-        turbine._turbulence_intensity = turbine.current_turbulence_intensity + 2*TI_mixing
+        turbine._turbulence_intensity = turbine.current_turbulence_intensity + self.gch_gain*TI_mixing
         TI = copy.deepcopy(turbine.current_turbulence_intensity) #+ TI_mixing
 
         # turbine parameters
