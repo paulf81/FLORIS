@@ -263,8 +263,8 @@ def calc_VW(
     # print(Gamma_wake_rotation, np.mean(W5), np.mean(W6))
 
     # total spanwise velocity
-    V = V1 + V2 + V3 + V4 + V5 + V6
-    W = W1 + W2 + W3 + W4 + W5 + W6
+    V = V1 + V2 + V3 + V4 #+ V5 + V6
+    W = W1 + W2 + W3 + W4 #+ W5 + W6
     return V, W
 
 
@@ -372,22 +372,23 @@ class GaussianModel(VelocityDeficit):
             )
 
             # calculate fluctuations
-            v_prime = copy.deepcopy(flow_field.v) + V
-            w_prime = copy.deepcopy(flow_field.w) + W
+            # v_prime = np.sqrt( flow_field.v**2 + V**2 )
+            # w_prime = np.sqrt( flow_field.w**2 + W**2 )
+            v_prime = flow_field.v + V
+            w_prime = flow_field.w + W
 
             # get u_prime from current turbulence intensity
-            u_prime = turbine.u_prime(flow_field.u_initial)
+            u_prime = turbine.u_prime(turbine.average_velocity)
 
             # compute the new TKE
             TKE = (1 / 2) * (u_prime ** 2 + v_prime ** 2 + w_prime ** 2)
 
             # convert TKE back to TI
             TI_total = turbine.TKE_to_TI(TKE, flow_field.u_initial)
-
             # convert to turbulence due to mixing
             TI_mixing = np.array(TI_total) - turbine.current_turbulence_intensity
             idx = np.where((np.abs(x_locations - coord.x1) < turbine.rotor_diameter / 4))
-            TI_mixing = np.mean(TI_mixing[idx])
+            TI_mixing = np.mean(np.abs(TI_mixing[idx]))
         else:
             TI_mixing = 0.0
 

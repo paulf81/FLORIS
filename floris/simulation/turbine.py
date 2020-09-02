@@ -369,17 +369,11 @@ class Turbine(LoggerBase):
             list: converted turbulence intensity values expressed as a decimal
             (e.g. 10%TI -> 0.10).
         """
-        if len(turbulence_kinetic_energy) > 1:
-            turbulence_intensity = [
-                (np.sqrt((2 / 3) * turbulence_kinetic_energy)) / wind_speed
-                for i in range(len(turbulence_kinetic_energy))
-            ]
-        else:
-            turbulence_intensity = (np.sqrt((2 / 3) * turbulence_kinetic_energy[0])) / wind_speed
+        turbulence_intensity = (np.sqrt((2 / 3) * turbulence_kinetic_energy)) / wind_speed
 
         return turbulence_intensity
 
-    def TI_to_TKE(self, wind_speed):
+    def TI_to_TKE(self,wind_speed):
         """
         Converts TI to TKE.
 
@@ -389,10 +383,9 @@ class Turbine(LoggerBase):
         Returns:
             list: converted TKE values
         """
+        return ((wind_speed * self.current_turbulence_intensity)**2) / (2 / 3)
 
-        return wind_speed * self.current_turbulence_intensity / np.sqrt((2 / 3))
-
-    def u_prime(self, wind_speed):
+    def u_prime(self,wind_speed):
         """
         Converts a TKE to horizontal deviation component.
 
