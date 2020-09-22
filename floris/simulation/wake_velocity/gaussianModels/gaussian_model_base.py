@@ -340,7 +340,7 @@ class GaussianModel(VelocityDeficit):
 
         import copy
 
-        if self.use_yaw_added_recovery and turbine.yaw_angle > 0.0:
+        if self.use_yaw_added_recovery:
             # print('Adding TI mixing...')
             # compute turbulence modification
             dudz_initial = np.gradient(
@@ -381,14 +381,18 @@ class GaussianModel(VelocityDeficit):
             u_prime = turbine.u_prime(turbine.average_velocity)
 
             # compute the new TKE
-            TKE = (1 / 2) * (u_prime ** 2 + v_prime ** 2 + w_prime ** 2)
+            # TKE = (1 / 2) * (u_prime ** 2 + v_prime ** 2 + w_prime ** 2)
+            idx = np.where((np.abs(x_locations - coord.x1) < turbine.rotor_diameter / 4))
+            TKE = (1 / 2) * (u_prime ** 2 + np.mean(v_prime[idx]) ** 2 + np.mean(w_prime[idx]) ** 2)
 
             # convert TKE back to TI
-            TI_total = turbine.TKE_to_TI(TKE, flow_field.u_initial)
+            # TI_total = turbine.TKE_to_TI(TKE, flow_field.u_initial)
+            TI_total = turbine.TKE_to_TI(TKE, turbine.average_velocity)
             # convert to turbulence due to mixing
             TI_mixing = np.array(TI_total) - turbine.current_turbulence_intensity
-            idx = np.where((np.abs(x_locations - coord.x1) < turbine.rotor_diameter / 4))
-            TI_mixing = np.mean(np.abs(TI_mixing[idx]))
+            # idx = np.where((np.abs(x_locations - coord.x1) < turbine.rotor_diameter / 4))
+            # TI_mixing = np.mean(np.abs(TI_mixing[idx]))
+            # print('TI check: ', turbine.yaw_angle, turbine.current_turbulence_intensity,TI_mixing)
         else:
             TI_mixing = 0.0
 

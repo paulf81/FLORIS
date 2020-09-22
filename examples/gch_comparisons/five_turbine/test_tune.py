@@ -65,6 +65,7 @@ max_yaw = 25.0
 yaw_angles = [25,25,25,0,0]
 # yaw_angles = [23.6, 23.2, 21.,  18.1, 13.9,  0. ]
 # yaw_angles = [20,20,0]
+# yaw_angles = [0,0,0,0,0]
 
 fi.reinitialize_flow_field()
 print('==========================================')
@@ -103,6 +104,8 @@ power_initial = fi.get_farm_power()
 # yaw_angles = [25,25,22,18,0]
 yaw_angles = [25,25,25,0,0]
 # yaw_angles = [20,20,0]
+# yaw_angles = [0,0,0,0,0]
+
 print('==========================================')
 fi.reinitialize_flow_field()
 fi.calculate_wake(yaw_angles=yaw_angles)
