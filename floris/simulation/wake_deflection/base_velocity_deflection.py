@@ -122,7 +122,7 @@ def calculate_effective_yaw_angle(
     eps *= D  # Use set value
     eps = eps ** 2
 
-    idx = np.where((np.abs(x_locations - coord_x1) < D / 4))
+    idx = np.where((np.abs(x_locations - coord_x1) < D / 4) & (np.abs(y_locations - coord_x2) < D / 2))
 
     yLocs = y_locations[idx] + 0.01 - coord_x2
 
@@ -190,6 +190,8 @@ def calculate_effective_yaw_angle(
     else:
         err_msg = "No effective yaw angle is found. Set to 0."
         yaw_effective = 0.0
+
+    # print('effective yaw = ', yaw_effective)
 
     return yaw_effective + yaw_angle, err_msg
 

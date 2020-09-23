@@ -200,6 +200,8 @@ class Gauss(VelocityDeflection):
         delta_near_wake[x_locations < xR] = 0.0
         delta_near_wake[x_locations > x0] = 0.0
 
+        # print('Delta near wake = ', delta0)
+
         # deflection in the far wake
         sigma_y = ky * (x_locations - x0) + sigma_y0
         sigma_z = kz * (x_locations - x0) + sigma_z0

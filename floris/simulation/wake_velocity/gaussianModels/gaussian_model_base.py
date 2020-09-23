@@ -265,6 +265,8 @@ def calc_VW(
     # total spanwise velocity
     V = V1 + V2 + V3 + V4 #+ V5 + V6
     W = W1 + W2 + W3 + W4 #+ W5 + W6
+
+
     return V, W
 
 
